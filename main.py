@@ -105,7 +105,7 @@ def check_feed():
 
     rss_escaped = pre_tag.text
 
-    # Step 4: Unescape HTML entities
+    # Unescape HTML entities
     rss_unescaped = html.unescape(rss_escaped)
     safe_rss = fix_common_xml_problems(rss_unescaped)
     # Parse the XML content
@@ -173,38 +173,37 @@ def monitor_feed():
         check_feed()
         time.sleep(WAIT_TIME)
 
+def escape_xml_text_nodes(elem):
+    """
+    Recursively escape <, >, & in text and tail content of an ElementTree element
+    """
+    if elem.text:
+        elem.text = html.escape(elem.text)
+    for child in elem:
+        escape_xml_text_nodes(child)
+        if child.tail:
+            child.tail = html.escape(child.tail)
+
+
 def fix_common_xml_problems(xml_text: str) -> str:
-    # Fix unescaped ampersands that are not part of entities
-    xml_text = re.sub(r'&(?!#?\w+;)', '&amp;', xml_text)
+    try:
+        # Try to parse it first — if valid, no changes needed
+        root = ET.fromstring(xml_text)
+        return xml_text  # already fine
+    except ET.ParseError:
+        pass  # we'll fix it below
 
-    # Fix raw < and > that are not part of tags (e.g., inside text)
-    # Avoid touching anything that looks like an XML tag
-    # Here, we use a workaround: only escape < and > outside of tags
+    # Try escaping ampersands not in proper entities
+    cleaned = re.sub(r'&(?!#?\w+;)', '&amp;', xml_text)
 
-    def escape_text_outside_tags(text):
-        result = []
-        in_tag = False
-        for char in text:
-            if char == '<':
-                if not in_tag:
-                    result.append('&lt;')
-                else:
-                    result.append(char)
-                in_tag = True
-            elif char == '>':
-                if in_tag:
-                    result.append(char)
-                else:
-                    result.append('&gt;')
-                in_tag = False
-            elif char == '&':
-                # Already handled above: & -> &amp;
-                result.append(char)
-            else:
-                result.append(char)
-        return ''.join(result)
-
-    return escape_text_outside_tags(xml_text)
+    # Try parsing again
+    try:
+        root = ET.fromstring(cleaned)
+        escape_xml_text_nodes(root)
+        return ET.tostring(root, encoding='unicode')
+    except ET.ParseError as e:
+        # Fallback: just return the ampersand-cleaned one
+        return cleaned
 
 def update_filter_keywords():
     # Read filter keywords from the environment variable
