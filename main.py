@@ -173,10 +173,38 @@ def monitor_feed():
         check_feed()
         time.sleep(WAIT_TIME)
 
-def fix_common_xml_problems(xml_text):
-    # Fix unescaped ampersands
+def fix_common_xml_problems(xml_text: str) -> str:
+    # Fix unescaped ampersands that are not part of entities
     xml_text = re.sub(r'&(?!#?\w+;)', '&amp;', xml_text)
-    return xml_text
+
+    # Fix raw < and > that are not part of tags (e.g., inside text)
+    # Avoid touching anything that looks like an XML tag
+    # Here, we use a workaround: only escape < and > outside of tags
+
+    def escape_text_outside_tags(text):
+        result = []
+        in_tag = False
+        for char in text:
+            if char == '<':
+                if not in_tag:
+                    result.append('&lt;')
+                else:
+                    result.append(char)
+                in_tag = True
+            elif char == '>':
+                if in_tag:
+                    result.append(char)
+                else:
+                    result.append('&gt;')
+                in_tag = False
+            elif char == '&':
+                # Already handled above: & -> &amp;
+                result.append(char)
+            else:
+                result.append(char)
+        return ''.join(result)
+
+    return escape_text_outside_tags(xml_text)
 
 def update_filter_keywords():
     # Read filter keywords from the environment variable
