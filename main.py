@@ -39,6 +39,7 @@ headers = {
 seen_posts = set()
 
 first_run = True
+is_error = False
 
 def send_initial_notification():
     response = requests.post(
@@ -47,11 +48,23 @@ def send_initial_notification():
             "token": PUSHOVER_TOKEN,
             "user": PUSHOVER_USER_KEY,
             "message": "Watcher is active and monitoring the RSS feed.",
-            "title": "RSS Feed Watcher"
+            "title": "Uhrforum Watcher"
         }
     )
     logging.info("~ Uhrforum Watcher started ~")
 
+def send_error_notification(error_message):
+    message = f"Error occured: {error_message}"
+    response = requests.post(
+        "https://api.pushover.net/1/messages.json",
+        data={
+            "token": PUSHOVER_TOKEN,
+            "user": PUSHOVER_USER_KEY,
+            "message": message,
+            "title": "Uhrforum Watcher"
+        }
+    )
+    logging.info("Error notification sent")
 
 def send_notification(title, link):
     message = f"New Post: {title}\nLink: {link}"
@@ -61,7 +74,7 @@ def send_notification(title, link):
             "token": PUSHOVER_TOKEN,
             "user": PUSHOVER_USER_KEY,
             "message": message,
-            "title": "Neues Uhr Forum Angebot"
+            "title": "New UhrForum Post"
         }
     )
     if response.status_code == 200:
@@ -101,8 +114,14 @@ def check_feed():
     pre_tag = soup.find("pre")
 
     if not pre_tag:
-        raise ValueError("No <pre> tag found — RSS feed not formatted as expected")
+        if not is_error:
+            is_error = True
+            send_error_notification("No <pre> tag found — RSS feed not formatted as expected")
 
+        logging.error("No <pre> tag found — RSS feed not formatted as expected")
+        return
+
+    is_error = False
     rss_escaped = pre_tag.text
 
     # Unescape HTML entities
