@@ -85,6 +85,7 @@ def send_notification(title, link):
 
 def check_feed():
     global first_run
+    global is_error
 
     filter_keywords = update_filter_keywords()
     # Fetch the RSS feed while bypassing SSL verification and using custom headers
