@@ -188,9 +188,12 @@ def check_feed():
 # Main loop to run the feed check every minute
 def monitor_feed():
     while True:
-        logging.info("Checking for new posts...")
-        WAIT_TIME = int(os.getenv("WAIT_TIME", 120))
-        check_feed()
+        try:
+            logging.info("Checking for new posts...")
+            WAIT_TIME = int(os.getenv("WAIT_TIME", 120))
+            check_feed()
+        except Exception as e:
+            logging.error(f"Error during feed check: {e}", exc_info=True)
         time.sleep(WAIT_TIME)
 
 def escape_xml_text_nodes(elem):
