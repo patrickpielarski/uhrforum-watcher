@@ -90,6 +90,15 @@ def check_feed():
     filter_keywords = update_filter_keywords()
     # Fetch the RSS feed while bypassing SSL verification and using custom headers
     options = Options()
+    # Run Chrome in headless mode so it doesn't steal focus
+    # Use the modern headless mode where available
+    options.add_argument("--headless=new")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--window-size=1920,1080")
+    # Provide the same user-agent as used for requests
+    options.add_argument(f"user-agent={headers['User-Agent']}")
     driver = webdriver.Chrome(options=options)
     try:
         url = "https://uhrforum.de/forums/-/index.rss"
